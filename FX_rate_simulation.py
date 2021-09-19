@@ -5,6 +5,7 @@ import numpy_financial as npf
 
 # I assumed that the volatility is a yearly value, therefore we get the daly by multiplying it by sqrt(number of days in a year)
 # We simulate the FX rate change for 5 years, with daily time steps to get the daily Close spot rates
+# Interest rate is 0%, and there is no drift so neither of these are included in the calculations
 
 #-----------------------------------------------------------------
 #------------------------- Part (a) ------------------------------
@@ -49,9 +50,9 @@ V_final = V_0 + V_proc  # final return/proceed
 
 Cashflow = pd.DataFrame(-V_0 * fx_spots.iloc[0])  # initial investment of 100,000,000 GBP in USD
 for i in range(1,5):
-    Cashflow['Proceeds %s'%i] = (V_proc * fx_spots.iloc[i])     # proceeds in USD calculated with spot rate at the time of proceed
+    Cashflow['Proceeds %s'%i] = (V_proc * fx_spots.iloc[i])   # proceeds in USD calculated with exchange rate at the time
 Cashflow['Proceeds 5'] = (V_final * fx_spots.iloc[5])
-Cashflow['irr'] = Cashflow.apply(npf.irr, axis=1)           # Calculating the IRR for each path
+Cashflow['irr'] = Cashflow.apply(npf.irr, axis=1)             # Calculating the IRR for each path
 
 # plotting histogram of IRRs
 plt.figure()
@@ -72,11 +73,11 @@ print('95th percentile irr', perc_without_option[0], '\n50th percentile irr', pe
 #------------------------- Part (c) ------------------------------
 #-----------------------------------------------------------------
 
-print('\n     Part (c)\n \nCalculating the European put option price to hedge the portfolio\n')
+print('\n\n     Part (c)\n \nCalculating the European put option price to hedge the portfolio\n')
 
 
-K = 1.37625  # strike price of european put option
-S_T = (fx_spots.iloc[-1])       # final spot rate of each path at T = 31.08.2026
+K = 1.37625                   # strike price of european put option
+S_T = (fx_spots.iloc[-1])     # final spot rate of each path at T = 31.08.2026
 
 payoffs = []
 for stock_price in S_T:
@@ -84,7 +85,7 @@ for stock_price in S_T:
 
 premium = sum(payoffs) / no_paths   # expectation value of payoffs (Black-Scholes), given r=0%
 price = 100000000 * premium         # price of option
-print('\nEuropean put option to sell 100,000,000GBP at 1.37625 GBP/USD on\
+print('European put option to sell 100,000,000GBP at 1.37625 GBP/USD on\
  31-08-2026, purchased on 31-08-2021, has fair option price: {P} USD\
     \n'.format(P=round(price, 2)))
 
@@ -92,8 +93,10 @@ print('\nEuropean put option to sell 100,000,000GBP at 1.37625 GBP/USD on\
 #-----------------------------------------------------------------
 #------------------------- Part (d) ------------------------------
 #-----------------------------------------------------------------
+
 print('\n     Part (d)\n \nCalculating IRR of the hedged portfolio,\
  including the option premium payment, and the option payoff\n')
+
 
 Cashflow[0] = Cashflow[0] - price  # option premium paid
 Cashflow['Payoffs'] = payoffs
@@ -105,6 +108,8 @@ Cashflow['irr'] = Cashflow.apply(npf.irr, axis=1)       # calculating IRR with p
 plt.hist(Cashflow['irr'], bins, histtype='step', label='with put option');
 plt.legend();
 plt.title('Distribution of internal rates of return over 1000 simulations')
+plt.show()
+
 perc_with_option=np.percentile(Cashflow['irr'], [95,50,5])
 
 print('IRR of USD with European put option:')
@@ -118,5 +123,5 @@ print('With the use of the put option, the 5th percentile increased from 7% to a
       '\nEven though the 50th percentile of the original distribution is slightly higher, '
       'the spread of the distribution doesnt guarantee a fixed return, \non the other hand the IRR '
       'distribution with the put option is more leptokurtic and right skewed than the other, '
-      'making it more likely to return an IRR value of around 13% ')
-plt.show()
+      'making it more likely to return an IRR value of around 13%. \nUsing the put option does reduce '
+      'the portfolio FX risk even in the event of the complete collapse in value of GBP.')
